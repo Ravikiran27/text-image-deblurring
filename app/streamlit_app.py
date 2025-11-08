@@ -256,6 +256,7 @@ def main():
         st.write(f"**Input Size:** {img_size}x{img_size}")
         st.write(f"**Parameters:** ~{model.count_params():,}")
 
+
     
     # File uploader
     st.markdown("---")
