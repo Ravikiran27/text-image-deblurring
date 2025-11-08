@@ -1,6 +1,6 @@
 # Text Image Deblurring using Transfer Learning with Pretrained CNN Models
 
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://your-app-url.streamlit.app)
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://text-image-deblurring-ravikiran27.streamlit.app)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![TensorFlow 2.13+](https://img.shields.io/badge/TensorFlow-2.13+-orange.svg)](https://tensorflow.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -300,7 +300,7 @@ git commit -m "Initial commit: Text Image Deblurring"
 
 2. **Push to GitHub**:
 ```bash
-git remote add origin https://github.com/YOUR_USERNAME/text-image-deblurring.git
+git remote add origin https://github.com/Ravikiran27/text-image-deblurring.git
 git branch -M main
 git push -u origin main
 ```
@@ -309,7 +309,7 @@ git push -u origin main
    - Visit [share.streamlit.io](https://share.streamlit.io/)
    - Sign in with GitHub
    - Click "New app"
-   - Select your repository
+   - Repository: `Ravikiran27/text-image-deblurring`
    - Main file path: `app/streamlit_app.py`
    - Click "Deploy!"
 
@@ -339,7 +339,11 @@ This project is open source and available for educational purposes.
 
 ## 👨‍💻 Author
 
-AI Engineering Project - Text Image Deblurring using Deep Learning
+**Ravikiran** - AI Engineering Project
+
+- GitHub: [@Ravikiran27](https://github.com/Ravikiran27)
+- Project: [text-image-deblurring](https://github.com/Ravikiran27/text-image-deblurring)
+- Live Demo: [Streamlit App](https://text-image-deblurring-ravikiran27.streamlit.app)
 
 ---
 
