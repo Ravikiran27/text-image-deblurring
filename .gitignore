@@ -1,0 +1,82 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb_checkpoints/
+
+# TensorFlow/Keras
+*.h5
+*.hdf5
+*.pb
+*.ckpt
+*.ckpt.data*
+*.ckpt.index
+*.ckpt.meta
+saved_models/
+checkpoints/
+logs/
+tensorboard/
+
+# Dataset
+data/blur/*.jpg
+data/blur/*.jpeg
+data/blur/*.png
+data/blur/*.bmp
+data/orig/*.jpg
+data/orig/*.jpeg
+data/orig/*.png
+data/orig/*.bmp
+
+# Keep directory structure
+!data/blur/.gitkeep
+!data/orig/.gitkeep
+
+# Test outputs
+test_results/
+output/
+results/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Virtual Environment
+venv/
+.venv/
+env/
+
+# Streamlit
+.streamlit/
+
+# Large files
+*.npz
+*.npy
+*.zip
+*.tar.gz
