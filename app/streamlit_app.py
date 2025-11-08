@@ -1,34 +1,24 @@
 """
-Streamlit Web App for Text Image Deblurring
-
-This interactive web application allows users to upload blurred text images
-and see the deblurred results using the trained model.
-
-Usage:
-    streamlit run app/streamlit_app.py
+Text Image Deblurring Application
+Using Transfer Learning with Pretrained CNN Models (VGG16/ResNet50)
+Based on the training notebook approach
 """
 
-import os
-import sys
-import numpy as np
-import cv2
 import streamlit as st
 import tensorflow as tf
+import numpy as np
+import cv2
 from PIL import Image
-import matplotlib.pyplot as plt
-
-# Add parent directory to path to import modules
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from utils.metrics import calculate_psnr, calculate_ssim
-
+import os
+from skimage.metrics import structural_similarity as ssim
+from skimage.metrics import peak_signal_noise_ratio as psnr
+import io
 
 # Page configuration
 st.set_page_config(
     page_title="Text Image Deblurring",
     page_icon="🖼️",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    layout="wide"
 )
 
 # Custom CSS
@@ -41,14 +31,8 @@ st.markdown("""
         width: 100%;
         background-color: #4CAF50;
         color: white;
-        padding: 0.5rem;
-        font-size: 1.1rem;
-    }
-    .metric-card {
-        background-color: #f0f2f6;
-        padding: 1rem;
+        padding: 0.75rem;
         border-radius: 0.5rem;
-        margin: 0.5rem 0;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -56,352 +40,251 @@ st.markdown("""
 
 @st.cache_resource
 def load_model(model_path):
-    """
-    Load the trained model (cached for efficiency).
-    
-    Args:
-        model_path (str): Path to model file
-        
-    Returns:
-        tf.keras.Model: Loaded model
-    """
+    """Load the trained model (same as notebook)."""
     try:
-        # Load model with custom objects to handle Keras 3.x compatibility
         from tensorflow.keras.losses import MeanSquaredError
         model = tf.keras.models.load_model(
             model_path,
             custom_objects={'mse': MeanSquaredError()},
-            compile=False  # Don't need to compile for inference
+            compile=False
         )
         return model
     except Exception as e:
         st.error(f"Error loading model: {e}")
-        import traceback
-        st.error(traceback.format_exc())
         return None
 
 
-def preprocess_image(image, target_size=(256, 256)):
+def load_and_preprocess_image(image, target_size=(256, 256)):
     """
-    Preprocess uploaded image for model inference.
-    
-    Args:
-        image: PIL Image or numpy array
-        target_size: Target dimensions
-        
-    Returns:
-        tuple: (processed_image, original_size)
+    Load and preprocess image - identical to notebook approach.
     """
-    # Convert PIL to numpy if needed
-    if isinstance(image, Image.Image):
-        image = np.array(image)
-    
-    # Store original size
-    original_size = image.shape[:2]
+    # Convert PIL to numpy
+    img = np.array(image)
     
     # Convert to RGB if needed
-    if len(image.shape) == 2:  # Grayscale
-        image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
-    elif image.shape[2] == 4:  # RGBA
-        image = cv2.cvtColor(image, cv2.COLOR_RGBA2RGB)
+    if len(img.shape) == 2:
+        img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+    elif img.shape[2] == 4:
+        img = cv2.cvtColor(img, cv2.COLOR_RGBA2RGB)
+    
+    # Store original size
+    original_size = img.shape[:2]
     
     # Resize to model input size
-    image_resized = cv2.resize(image, target_size, interpolation=cv2.INTER_AREA)
+    img_resized = cv2.resize(img, target_size, interpolation=cv2.INTER_AREA)
     
     # Normalize to [0, 1]
-    image_normalized = image_resized.astype(np.float32) / 255.0
+    img_normalized = img_resized.astype(np.float32) / 255.0
     
-    return image_normalized, original_size
-
-
-def postprocess_image(image, original_size=None):
-    """
-    Postprocess model output back to displayable format.
-    
-    Args:
-        image: Model output (normalized)
-        original_size: Original image dimensions
-        
-    Returns:
-        numpy array: Displayable image
-    """
-    # Clip values to [0, 1]
-    image = np.clip(image, 0, 1)
-    
-    # Resize to original size if specified
-    if original_size is not None:
-        image = cv2.resize(image, (original_size[1], original_size[0]), 
-                          interpolation=cv2.INTER_CUBIC)
-    
-    # Convert to uint8
-    image = (image * 255).astype(np.uint8)
-    
-    return image
+    return img_normalized, original_size
 
 
 def deblur_image(model, image, target_size=(256, 256)):
     """
-    Deblur an image using the trained model.
-    
-    Args:
-        model: Trained Keras model
-        image: Input image
-        target_size: Model input size
-        
-    Returns:
-        tuple: (deblurred_image, processed_input)
+    Deblur an image - exact same logic as notebook's deblur_image function.
     """
-    # Preprocess
-    processed_img, original_size = preprocess_image(image, target_size)
+    # Load and preprocess
+    img = np.array(image)
+    if len(img.shape) == 2:
+        img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+    elif img.shape[2] == 4:
+        img = cv2.cvtColor(img, cv2.COLOR_RGBA2RGB)
+    
+    original_size = img.shape[:2]
+    img = cv2.resize(img, target_size, interpolation=cv2.INTER_AREA)
+    img = img.astype(np.float32) / 255.0
     
     # Add batch dimension
-    input_batch = np.expand_dims(processed_img, axis=0)
+    img_batch = np.expand_dims(img, axis=0)
     
     # Predict
-    with st.spinner("Deblurring image..."):
-        output_batch = model.predict(input_batch, verbose=0)
+    deblurred = model.predict(img_batch, verbose=0)
     
     # Remove batch dimension
-    deblurred = output_batch[0]
+    deblurred = deblurred[0]
     
-    # Postprocess
-    deblurred_display = postprocess_image(deblurred, original_size)
-    input_display = postprocess_image(processed_img, original_size)
-    
-    return deblurred_display, input_display
+    return img, deblurred
+
+
+def calculate_metrics(img1, img2):
+    """Calculate PSNR and SSIM - same as notebook."""
+    try:
+        # Ensure float32 and normalized
+        if img1.max() > 1.0:
+            img1 = img1.astype(np.float32) / 255.0
+        if img2.max() > 1.0:
+            img2 = img2.astype(np.float32) / 255.0
+        
+        # Calculate PSNR
+        psnr_val = psnr(img1, img2, data_range=1.0)
+        
+        # Calculate SSIM
+        ssim_val = ssim(img1, img2, data_range=1.0, channel_axis=2)
+        
+        return psnr_val, ssim_val
+    except Exception as e:
+        return None, None
 
 
 def main():
-    """
-    Main Streamlit application.
-    """
-    # Title and description
+    """Main Streamlit application."""
+    
+    # Title
     st.title("🖼️ Text Image Deblurring")
     st.markdown("""
     This application uses **Transfer Learning with Pretrained CNN Models** (VGG16/ResNet50) 
-    to restore blurred text images. Upload a blurred image to see the results!
+    to restore blurred text images.
     """)
     
     # Sidebar
     st.sidebar.title("⚙️ Configuration")
     
-    # Model path (using trained model - automatically detects available models)
+    # Find available models
     script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    
-    # Check for available models
     saved_models_dir = os.path.join(script_dir, "saved_models")
-    available_models = {}
     
-    # Check for different model types
-    for model_type in ['unet', 'vgg16', 'resnet50']:
+    available_models = {}
+    for model_type in ['vgg16', 'resnet50', 'unet']:
         model_file = os.path.join(saved_models_dir, f"{model_type}_deblur_best.h5")
         if os.path.exists(model_file):
-            available_models[model_type.upper()] = model_file
+            available_models[f"Using {model_type.upper()} Model"] = model_file
     
     if not available_models:
-        st.sidebar.error("⚠️ No trained models found!")
-        st.error("""
-        **No trained models found!**
-        
-        Please train a model using the Kaggle notebook and save it to `saved_models/` directory.
-        
-        Expected filenames:
-        - `unet_deblur_best.h5` (recommended)
-        - `vgg16_deblur_best.h5`
-        - `resnet50_deblur_best.h5`
-        """)
+        st.error("❌ No trained models found! Please train a model first.")
+        st.info("Run the training notebook on Kaggle to create a model.")
         return
     
-    # Model selection (if multiple models available)
-    if len(available_models) > 1:
-        selected_model_name = st.sidebar.selectbox(
-            "Select Model",
-            options=list(available_models.keys())
-        )
-        model_path = available_models[selected_model_name]
-        st.sidebar.info(f"Using **{selected_model_name}** Model")
-    else:
-        selected_model_name = list(available_models.keys())[0]
-        model_path = available_models[selected_model_name]
-        st.sidebar.info(f"Using **{selected_model_name}** Model")
+    # Model selection
+    model_choice = st.sidebar.selectbox(
+        "Select Model",
+        options=list(available_models.keys())
+    )
     
-    # Fixed image size (models are trained with specific input size)
-    img_size = 256  # Fixed at 256x256 - model requirement
-    st.sidebar.info(f"📐 Model Input Size: {img_size}x{img_size} (fixed)")
-    st.sidebar.caption("Models are trained with fixed input size. Images will be automatically resized.")
-    
-    # Additional options
-    st.sidebar.markdown("---")
-    show_comparison = st.sidebar.checkbox("Show Side-by-Side Comparison", value=True)
-    compute_metrics = st.sidebar.checkbox("Compute Quality Metrics", value=False,
-                                         help="Only if ground truth is available")
+    model_path = available_models[model_choice]
     
     # Load model
     model = load_model(model_path)
-    
     if model is None:
-        st.error("Failed to load model. Please check the model file.")
+        st.error("Failed to load model!")
         return
     
-    st.sidebar.success(f"✅ {selected_model_name} Model Loaded Successfully")
+    st.sidebar.success("✅ Model Loaded Successfully")
+    st.sidebar.info("**Model Input Size:** 256x256 (fixed)")
     
-    # Show model info
-    with st.sidebar.expander("ℹ️ Model Information"):
-        st.write(f"**Architecture:** {selected_model_name}")
-        st.write(f"**Input Size:** {img_size}x{img_size}")
-        st.write(f"**Parameters:** ~{model.count_params():,}")
-
+    # Options
+    show_comparison = st.sidebar.checkbox("Show Side-by-Side Comparison", value=True)
+    compute_metrics = st.sidebar.checkbox("Compute Quality Metrics", value=False,
+                                         help="Calculate PSNR and SSIM")
     
     # File uploader
-    st.markdown("---")
-    st.subheader("📤 Upload Blurred Image")
-    
+    st.markdown("### 📤 Upload Image")
     uploaded_file = st.file_uploader(
-        "Choose an image file",
-        type=['jpg', 'jpeg', 'png', 'bmp'],
-        help="Upload a blurred text image"
+        "Choose a blurred text image",
+        type=['png', 'jpg', 'jpeg', 'bmp', 'tiff']
     )
     
-    # Sample images option
-    use_sample = st.checkbox("Or use a sample blurred image")
-    
-    if use_sample:
-        sample_dir = os.path.join(script_dir, "data", "blur")
-        if os.path.exists(sample_dir):
-            sample_files = [f for f in os.listdir(sample_dir) 
-                          if f.lower().endswith(('.jpg', '.jpeg', '.png', '.bmp'))]
-            if sample_files:
-                selected_sample = st.selectbox("Select sample image", sample_files)
-                uploaded_file = os.path.join(sample_dir, selected_sample)
-    
-    # Process image
     if uploaded_file is not None:
-        try:
-            # Load image
-            if isinstance(uploaded_file, str):
-                # Sample image path
-                image = cv2.imread(uploaded_file)
-                image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            else:
-                # Uploaded file
-                image = Image.open(uploaded_file)
-                image = np.array(image)
-            
-            # Display original
-            st.markdown("---")
-            st.subheader("📷 Input Image")
-            
-            col1, col2, col3 = st.columns([1, 2, 1])
-            with col2:
-                st.image(image, caption="Blurred Input", use_container_width=True)
-            
-            # Deblur button
-            if st.button("🚀 Deblur Image", key="deblur_btn"):
-                # Deblur
-                deblurred, processed_input = deblur_image(model, image, (img_size, img_size))
-                
-                # Display results
-                st.markdown("---")
-                st.subheader("✨ Results")
-                
-                if show_comparison:
-                    # Side-by-side comparison
-                    col1, col2 = st.columns(2)
-                    
-                    with col1:
-                        st.markdown("**Blurred Input**")
-                        st.image(processed_input, use_container_width=True)
-                    
-                    with col2:
-                        st.markdown("**Deblurred Output**")
-                        st.image(deblurred, use_container_width=True)
-                else:
-                    # Only show output
-                    col1, col2, col3 = st.columns([1, 2, 1])
-                    with col2:
-                        st.image(deblurred, caption="Deblurred Output", use_container_width=True)
-                
-                # Compute metrics if ground truth is available
-                if compute_metrics:
-                    st.markdown("---")
-                    st.subheader("📊 Quality Metrics")
-                    
-                    # File uploader for ground truth
-                    gt_file = st.file_uploader(
-                        "Upload ground truth (original) image for comparison",
-                        type=['jpg', 'jpeg', 'png', 'bmp'],
-                        key="gt_uploader"
-                    )
-                    
-                    if gt_file is not None:
-                        gt_image = Image.open(gt_file)
-                        gt_image = np.array(gt_image)
-                        
-                        # Preprocess ground truth
-                        gt_processed, _ = preprocess_image(gt_image, (img_size, img_size))
-                        deblurred_normalized = deblurred.astype(np.float32) / 255.0
-                        
-                        # Calculate metrics
-                        psnr_val = calculate_psnr(gt_processed, deblurred_normalized)
-                        ssim_val = calculate_ssim(gt_processed, deblurred_normalized)
-                        
-                        # Display metrics
-                        col1, col2 = st.columns(2)
-                        
-                        with col1:
-                            st.metric(
-                                label="PSNR (Peak Signal-to-Noise Ratio)",
-                                value=f"{psnr_val:.2f} dB",
-                                help="Higher is better (typically 20-40 dB)"
-                            )
-                        
-                        with col2:
-                            st.metric(
-                                label="SSIM (Structural Similarity Index)",
-                                value=f"{ssim_val:.4f}",
-                                help="Range: 0-1, higher is better"
-                            )
-                
-                # Download button
-                st.markdown("---")
-                st.subheader("💾 Download Result")
-                
-                # Convert to bytes for download
-                deblurred_pil = Image.fromarray(deblurred)
-                
-                # Create download button
-                from io import BytesIO
-                buf = BytesIO()
-                deblurred_pil.save(buf, format="PNG")
-                byte_im = buf.getvalue()
-                
-                st.download_button(
-                    label="Download Deblurred Image",
-                    data=byte_im,
-                    file_name="deblurred_output.png",
-                    mime="image/png"
-                )
+        # Load image
+        image = Image.open(uploaded_file).convert('RGB')
         
-        except Exception as e:
-            st.error(f"Error processing image: {e}")
-            st.exception(e)
+        # Deblur button
+        if st.button("🔄 Deblur Image", type="primary"):
+            try:
+                # Deblur - exact notebook logic
+                blurred, deblurred = deblur_image(model, image, target_size=(256, 256))
+                
+                # Store results
+                st.session_state['blurred'] = blurred
+                st.session_state['deblurred'] = deblurred
+                st.session_state['success'] = True
+                
+                st.success("✅ Deblurring completed!")
+                
+            except Exception as e:
+                st.error(f"Error: {e}")
+                st.session_state['success'] = False
+        
+        # Display results
+        if st.session_state.get('success', False):
+            st.markdown("### ✨ Results")
+            
+            if show_comparison:
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.markdown("#### Blurred Input")
+                    # Convert to uint8 for display
+                    blurred_display = (st.session_state['blurred'] * 255).astype(np.uint8)
+                    st.image(blurred_display, use_column_width=True)
+                
+                with col2:
+                    st.markdown("#### Deblurred Output")
+                    # Convert to uint8 for display
+                    deblurred_display = (st.session_state['deblurred'] * 255).astype(np.uint8)
+                    st.image(deblurred_display, use_column_width=True)
+            else:
+                st.markdown("#### Deblurred Output")
+                deblurred_display = (st.session_state['deblurred'] * 255).astype(np.uint8)
+                st.image(deblurred_display, use_column_width=True)
+            
+            # Calculate metrics if requested
+            if compute_metrics:
+                st.markdown("### 📊 Quality Metrics")
+                
+                psnr_val, ssim_val = calculate_metrics(
+                    st.session_state['blurred'], 
+                    st.session_state['deblurred']
+                )
+                
+                if psnr_val is not None:
+                    col_m1, col_m2 = st.columns(2)
+                    with col_m1:
+                        st.metric("PSNR (Peak Signal-to-Noise Ratio)", f"{psnr_val:.2f} dB")
+                    with col_m2:
+                        st.metric("SSIM (Structural Similarity)", f"{ssim_val:.4f}")
+                    
+                    st.info("""
+                    **Interpreting metrics:**
+                    - PSNR > 30 dB: Good quality
+                    - SSIM > 0.90: Excellent similarity
+                    """)
+            
+            # Download button
+            st.markdown("### 💾 Download Result")
+            
+            # Convert to PIL for download
+            deblurred_uint8 = (st.session_state['deblurred'] * 255).astype(np.uint8)
+            result_pil = Image.fromarray(deblurred_uint8)
+            
+            buf = io.BytesIO()
+            result_pil.save(buf, format='PNG')
+            buf.seek(0)
+            
+            st.download_button(
+                label="⬇️ Download Deblurred Image",
+                data=buf,
+                file_name="deblurred_result.png",
+                mime="image/png"
+            )
     
     else:
-        # Instructions
         st.info("""
-        👆 **Upload a blurred text image** or use a sample to get started.
+        👆 **Upload a blurred text image** to get started!
         
-        **Tips for best results:**
-        - Use images with clear text content
-        - Avoid extremely low resolution images
-        - Images will be resized to the model input size
+        **How it works:**
+        1. Upload your blurred image
+        2. Click "Deblur Image"
+        3. View and download the result
+        
+        **Supported formats:** PNG, JPG, JPEG, BMP, TIFF
         """)
     
     # Footer
     st.markdown("---")
     st.markdown("""
     <div style='text-align: center; color: #666;'>
-        <p>Built with Streamlit and TensorFlow | Transfer Learning with Pretrained CNNs</p>
+        <p>Built with Streamlit | Powered by TensorFlow</p>
+        <p>Using Transfer Learning with VGG16/ResNet50</p>
     </div>
     """, unsafe_allow_html=True)
 
