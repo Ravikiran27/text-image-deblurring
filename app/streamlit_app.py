@@ -225,15 +225,10 @@ def main():
         model_path = available_models[selected_model_name]
         st.sidebar.info(f"Using **{selected_model_name}** Model")
     
-    # Image size
-    img_size = st.sidebar.slider(
-        "Model Input Size",
-        min_value=128,
-        max_value=512,
-        value=256,
-        step=64,
-        help="Size used by the model (will resize automatically)"
-    )
+    # Fixed image size (models are trained with specific input size)
+    img_size = 256  # Fixed at 256x256 - model requirement
+    st.sidebar.info(f"📐 Model Input Size: {img_size}x{img_size} (fixed)")
+    st.sidebar.caption("Models are trained with fixed input size. Images will be automatically resized.")
     
     # Additional options
     st.sidebar.markdown("---")
@@ -255,7 +250,6 @@ def main():
         st.write(f"**Architecture:** {selected_model_name}")
         st.write(f"**Input Size:** {img_size}x{img_size}")
         st.write(f"**Parameters:** ~{model.count_params():,}")
-
 
     
     # File uploader
