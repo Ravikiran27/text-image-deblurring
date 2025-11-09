@@ -20,3 +20,6 @@ scikit-image>=0.21.0
 
 # Visualization
 matplotlib>=3.7.0
+
+# Hugging Face Hub for model downloads
+huggingface-hub>=0.20.0
