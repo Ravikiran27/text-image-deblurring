@@ -144,7 +144,7 @@ def main():
     saved_models_dir = os.path.join(script_dir, "saved_models")
     
     available_models = {}
-    for model_type in ['vgg16', 'resnet50', 'unet']:
+    for model_type in ['maxim', 'vgg16', 'resnet50', 'unet']:
         model_file = os.path.join(saved_models_dir, f"{model_type}_deblur_best.h5")
         if os.path.exists(model_file):
             available_models[f"Using {model_type.upper()} Model"] = model_file
