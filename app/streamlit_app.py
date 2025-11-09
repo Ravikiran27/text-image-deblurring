@@ -132,8 +132,8 @@ def main():
     # Title
     st.title("🖼️ Text Image Deblurring")
     st.markdown("""
-    This application uses **Transfer Learning with Pretrained CNN Models** (VGG16/ResNet50) 
-    to restore blurred text images.
+    This application uses **MAXIM (Multi-Axis MLP)** and other deep learning models 
+    to restore blurred text images with state-of-the-art performance.
     """)
     
     # Sidebar
@@ -144,20 +144,23 @@ def main():
     saved_models_dir = os.path.join(script_dir, "saved_models")
     
     available_models = {}
+    # Prioritize MAXIM as the main model
     for model_type in ['maxim', 'vgg16', 'resnet50', 'unet']:
         model_file = os.path.join(saved_models_dir, f"{model_type}_deblur_best.h5")
         if os.path.exists(model_file):
-            available_models[f"Using {model_type.upper()} Model"] = model_file
+            display_name = f"MAXIM (Recommended)" if model_type == 'maxim' else f"{model_type.upper()}"
+            available_models[display_name] = model_file
     
     if not available_models:
         st.error("❌ No trained models found! Please train a model first.")
         st.info("Run the training notebook on Kaggle to create a model.")
         return
     
-    # Model selection
+    # Model selection - default to first (MAXIM)
     model_choice = st.sidebar.selectbox(
         "Select Model",
-        options=list(available_models.keys())
+        options=list(available_models.keys()),
+        index=0
     )
     
     model_path = available_models[model_choice]
@@ -169,7 +172,17 @@ def main():
         return
     
     st.sidebar.success("✅ Model Loaded Successfully")
-    st.sidebar.info("**Model Input Size:** 256x256 (fixed)")
+    
+    # Show model info
+    if 'MAXIM' in model_choice:
+        st.sidebar.info("""
+        **MAXIM Model**
+        - State-of-the-art architecture
+        - Multi-scale processing
+        - Input: 256x256 (fixed)
+        """)
+    else:
+        st.sidebar.info("**Model Input Size:** 256x256 (fixed)")
     
     # Options
     show_comparison = st.sidebar.checkbox("Show Side-by-Side Comparison", value=True)
