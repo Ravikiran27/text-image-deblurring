@@ -163,10 +163,9 @@ if uploaded_file:
     if show_comparison:
         col1, col2 = st.columns(2)
         with col1:
-            st.markdown("#### Blurred Input")
             st.image(img, use_container_width=True)
     else:
-        st.image(img, caption="Blurred Input", use_container_width=True)
+        st.image(img, use_container_width=True)
 
     if st.button("🔄 Deblur Image", type="primary"):
         with st.spinner("Processing with MAXIM... Please wait..."):
@@ -189,11 +188,9 @@ if uploaded_file:
         
         if show_comparison:
             with col2:
-                st.markdown("#### Deblurred Output")
                 st.image(st.session_state['result'], use_container_width=True)
         else:
-            st.markdown("### ✨ Result")
-            st.image(st.session_state['result'], caption="Deblurred Output", use_container_width=True)
+            st.image(st.session_state['result'], use_container_width=True)
         
         # Download button
         st.markdown("### 💾 Download")
